@@ -13,10 +13,11 @@ class DateTime:
 
 class Course:
 
-    def __init__(self, course_id, room_num, date_time):
+    def __init__(self, course_id, room_num, date_time, professor):
         self.course_id = course_id
         self.room_num = room_num
         self.date_time = date_time
+        self.professor = professor
 
     def mutate_course_id(self, course_id):
         self.course_id = course_id
@@ -27,5 +28,26 @@ class Course:
     def mutate_date_time(self, date_time):
         self.date_time = date_time
 
+    def mutate_professor(self, professor):
+        self.professor = professor
+
     def __repr__(self):
-        return "%s, %s, %s" % (self.course_id, self.room_num, self.date_time)
+        return "%s, %s, %s %s" % (self.course_id, self.room_num, self.date_time, self.professor)
+
+
+class Professor:
+
+    professor_id_index = 0
+
+    def __init__(self, name):
+        self.professor_id = Professor.get_next_professor_index()
+        self.name = name
+
+    @staticmethod
+    def get_next_professor_index():
+        index = Professor.professor_id_index
+        Professor.professor_id_index += 1
+        return index
+
+    def __repr__(self):
+        return "prof{%d, %s}" % (self.professor_id, self.name)

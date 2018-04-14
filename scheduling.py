@@ -1,12 +1,30 @@
 import sys
+import signal
 import pprint
 
 import copy
 import random
 from objects import *
 
+sig_int = False
+
 courses = ["162-01", "162-02", "163-01", "163-02", "263-01", "263-02", "343-01", "343-02", "350-1", "350-2", "351-01",
            "351-02", "353-01", "353-02", "357-01", "451-01", "452-01", "452-02", "457-01", "457-02", "678-01"]
+
+# courses = None
+# with open("courses.txt") as f:
+#     courses = []
+#     for line in f.read().splitlines():
+#         entries = line.split(" ")
+#         courses.append((entries[0], int(entries[1])))
+#
+# print(courses)
+# sys.exit(0)
+
+professors = [Professor("Jamal Alsabbagh"), Professor("Hans Dulimarta"), Professor("Mostafa El-Said")]  # ,
+# Professor("Jonathan Engelsma"), Professor("Roger Ferguson"), Professor("Larry Kotman")],
+# Professor("Jared Moore"), Professor("Jagadeesh Nandigam"), Professor("Christian Trefttz"),
+# Professor("Greg Wolffe"), Professor("Ira Woodring")]
 
 rooms = ["0", "1", "2", "3", "4", "5"]
 
@@ -23,6 +41,7 @@ TIME_SLICES = MAX_START_TIME - MIN_START_TIME + 2
 
 COURSE_INC = 5
 ROOM_INC = 1
+PROFESSOR_INC = 3
 
 TOP_PERCENT = .05
 PERCENT_UN_MUTATED = .01
@@ -33,7 +52,7 @@ pp = pprint.PrettyPrinter(indent=2)
 
 
 def fitness(gene):
-    score = COURSE_INC * NUM_COURSES + ROOM_INC * 2 * NUM_COURSES + 1
+    score = COURSE_INC * NUM_COURSES + 4 * (NUM_COURSES - 1) * ROOM_INC + 4 * (NUM_COURSES - 1) * PROFESSOR_INC + 1
     course_count = {}
     for course_id in courses:
         course_count[course_id] = 0
@@ -44,15 +63,22 @@ def fitness(gene):
             room_count[room][day] = []
             for i in range(MIN_START_TIME, MAX_START_TIME + 2, 1):
                 room_count[room][day].append(0)
+    # check professor overlap
+    professors_schedule = {}
+    for day in DAYS_OF_WEEK:
+        professors_schedule[day] = []
+        for i in range(TIME_SLICES):
+            professors_schedule[day].append({})
     for course in gene:
         course_count[course.course_id] += 1
         for time_slice in range(course.date_time.start_time - MIN_START_TIME,
                                 course.date_time.start_time + course.date_time.duration // 60 + 1 - MIN_START_TIME):
             for day in course.date_time.days:
                 room_count[course.room_num][day][time_slice] += 1
-    # pp.pprint(gene)
-    # pp.pprint(room_count)
-    # sys.exit(0)
+                if course.professor.name not in professors_schedule[day][time_slice]:
+                    professors_schedule[day][time_slice][course.professor.name] = 1
+                else:
+                    professors_schedule[day][time_slice][course.professor.name] += 1
     for count in course_count.values():
         if count == 1:
             score += COURSE_INC
@@ -61,8 +87,13 @@ def fitness(gene):
     for days in room_count.values():
         for day in days.values():
             for count in day:
-                if count != 0 and count != 1:
-                    score -= ROOM_INC
+                if count > 1:
+                    score -= (count - 1) * ROOM_INC
+    for day in DAYS_OF_WEEK:
+        for i in range(TIME_SLICES):
+            for count in professors_schedule[day][i].values():
+                if count > 1:
+                    score -= (count - 1) * PROFESSOR_INC
     if score <= 0:
         print("score of %d not allowed, exiting..." % score)
         sys.exit(-1)
@@ -123,7 +154,55 @@ def mutation(genomes, scores):
     print("mutation complete")
 
 
+def score_genomes(genomes):
+    scores = []
+    for gene in range(GENOMES_SIZE):
+        scores.append((gene, fitness(genomes[gene])))
+    return sorted(scores, key=lambda x: x[1], reverse=True)
+
+
+def print_rooms(gene):
+    room_count = {}
+    for room in rooms:
+        room_count[room] = {}
+        for day in DAYS_OF_WEEK:
+            room_count[room][day] = []
+            for i in range(MIN_START_TIME, MAX_START_TIME + 2, 1):
+                room_count[room][day].append(0)
+    for course in gene:
+        for time_slice in range(course.date_time.start_time - MIN_START_TIME,
+                                course.date_time.start_time + course.date_time.duration // 60 + 1 - MIN_START_TIME):
+            for day in course.date_time.days:
+                room_count[course.room_num][day][time_slice] += 1
+    pp.pprint(room_count)
+
+
+def print_professors(gene):
+    professors_schedule = {}
+    for day in DAYS_OF_WEEK:
+        professors_schedule[day] = []
+        for i in range(TIME_SLICES):
+            professors_schedule[day].append({})
+    for course in gene:
+        for time_slice in range(course.date_time.start_time - MIN_START_TIME,
+                                course.date_time.start_time + course.date_time.duration // 60 + 1 - MIN_START_TIME):
+            for day in course.date_time.days:
+                if course.professor.name not in professors_schedule[day][time_slice]:
+                    professors_schedule[day][time_slice][course.professor.name] = 1
+                else:
+                    professors_schedule[day][time_slice][course.professor.name] += 1
+    pp.pprint(professors_schedule)
+
+
+def signal_handler(signal, frame):
+    global sig_int
+    sig_int = True
+
+
 def main():
+    print("Max Score:\t%d" % (COURSE_INC * NUM_COURSES + 4 * (NUM_COURSES - 1) * ROOM_INC + 4 * (NUM_COURSES - 1) *
+                              PROFESSOR_INC + 1 + NUM_COURSES * COURSE_INC))
+
     genomes = []
 
     for gene in range(GENOMES_SIZE):
@@ -134,45 +213,37 @@ def main():
             start_time = random.randint(MIN_START_TIME, MAX_START_TIME)
             day_structure = random.choice(DateTime.days_list)
             date_time = DateTime(start_time, day_structure)
-            genomes[gene].append(Course(course_id, room, date_time))
+            professor = random.choice(professors)
+            genomes[gene].append(Course(course_id, room, date_time, professor))
     #########################################
-    for i in range(0, 50):
-        scores = []
-        for gene in range(GENOMES_SIZE):
-            scores.append((gene, fitness(genomes[gene])))
-        scores = sorted(scores, key=lambda x: x[1], reverse=True)
-        print(scores[:10])
-        print(scores[-10:])
-        print("\n")
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    scores = score_genomes(genomes)
+    print("Starting Scores:")
+    print(scores[:10])
+    print(scores[-10:])
+    print("\n")
+
+    for i in range(0, 1000):
+        if sig_int:
+            break
+        print("Generation %d:" % i)
+        scores = score_genomes(genomes)
         genomes = selection(genomes, scores)
         ####################
-        scores = []
-        for gene in range(GENOMES_SIZE):
-            scores.append((gene, fitness(genomes[gene])))
-        scores = sorted(scores, key=lambda x: x[1], reverse=True)
+        scores = score_genomes(genomes)
+        mutation(genomes, scores)
+        ####################
         print(scores[:10])
         print(scores[-10:])
         print("\n")
-        ####################
-        #pp.pprint(genomes[scores[0][0]])
-        mutation(genomes, scores)
-        #pp.pprint(genomes[scores[0][0]])
-        ####################
+    scores = score_genomes(genomes)
     pp.pprint(genomes[scores[0][0]])
     print("\n")
-    room_count = {}
-    for room in rooms:
-        room_count[room] = {}
-        for day in DAYS_OF_WEEK:
-            room_count[room][day] = []
-            for i in range(MIN_START_TIME, MAX_START_TIME + 2, 1):
-                room_count[room][day].append(0)
-    for course in genomes[scores[0][0]]:
-        for time_slice in range(course.date_time.start_time - MIN_START_TIME,
-                                course.date_time.start_time + course.date_time.duration // 60 + 1 - MIN_START_TIME):
-            for day in course.date_time.days:
-                room_count[course.room_num][day][time_slice] += 1
-    pp.pprint(room_count)
+    print_rooms(genomes[scores[0][0]])
+    print("\n\"")
+    print_professors(genomes[scores[0][0]])
 
 
 if __name__ == "__main__":
