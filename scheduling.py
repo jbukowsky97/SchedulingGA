@@ -8,29 +8,23 @@ from objects import *
 
 sig_int = False
 
-courses = ["162-01", "162-02", "163-01", "163-02", "263-01", "263-02", "343-01", "343-02", "350-1", "350-2", "351-01",
-           "351-02", "353-01", "353-02", "357-01", "451-01", "452-01", "452-02", "457-01", "457-02", "678-01"]
+courses = None
+with open("courses.txt") as f:
+    courses = []
+    for line in f.read().splitlines():
+        entries = line.split(" ")
+        courses.append((entries[0], int(entries[1])))
 
-# courses = None
-# with open("courses.txt") as f:
-#     courses = []
-#     for line in f.read().splitlines():
-#         entries = line.split(" ")
-#         courses.append((entries[0], int(entries[1])))
-#
-# print(courses)
-# sys.exit(0)
-
-professors = [Professor("Jamal Alsabbagh"), Professor("Hans Dulimarta"), Professor("Mostafa El-Said")]  # ,
-# Professor("Jonathan Engelsma"), Professor("Roger Ferguson"), Professor("Larry Kotman")],
-# Professor("Jared Moore"), Professor("Jagadeesh Nandigam"), Professor("Christian Trefttz"),
-# Professor("Greg Wolffe"), Professor("Ira Woodring")]
+professors = [Professor("Jamal Alsabbagh"), Professor("Hans Dulimarta"), Professor("Mostafa El-Said"),
+              Professor("Jonathan Engelsma"), Professor("Roger Ferguson"), Professor("Larry Kotman"),
+              Professor("Jared Moore"), Professor("Jagadeesh Nandigam"), Professor("Christian Trefttz"),
+              Professor("Greg Wolffe"), Professor("Ira Woodring")]
 
 rooms = ["0", "1", "2", "3", "4", "5"]
 
 DAYS_OF_WEEK = "MTWRF"
 
-GENOMES_SIZE = 5000
+GENOMES_SIZE = 1000
 
 MIN_START_TIME = 8
 MAX_START_TIME = 16
@@ -54,8 +48,8 @@ pp = pprint.PrettyPrinter(indent=2)
 def fitness(gene):
     score = COURSE_INC * NUM_COURSES + 4 * (NUM_COURSES - 1) * ROOM_INC + 4 * (NUM_COURSES - 1) * PROFESSOR_INC + 1
     course_count = {}
-    for course_id in courses:
-        course_count[course_id] = 0
+    for course in courses:
+        course_count[course[0]] = 0
     room_count = {}
     for room in rooms:
         room_count[room] = {}
@@ -141,15 +135,21 @@ def mutation(genomes, scores):
             if random.randint(1, NUM_COURSES) == 1:
                 mutation_choice = random.randint(0, 2)
                 if mutation_choice == 0:
-                    new_course_id = random.choice(courses)
-                    genomes[scores[i][0]][c].mutate_course_id(new_course_id)
+                    new_course = random.choice(courses)
+                    if genomes[scores[i][0]][c].credits != new_course[1]:
+                        # credits are different, need to generate new times
+                        start_time = random.randint(MIN_START_TIME, MAX_START_TIME)
+                        day_structure = random.choice(DateTime.get_day_list(new_course[1]))
+                        date_time = DateTime(start_time, day_structure, new_course[1])
+                        genomes[scores[i][0]][c].mutate_date_time(date_time)
+                    genomes[scores[i][0]][c].mutate_course(new_course)
                 elif mutation_choice == 1:
                     new_room = random.choice(rooms)
                     genomes[scores[i][0]][c].mutate_room(new_room)
                 elif mutation_choice == 2:
                     start_time = random.randint(MIN_START_TIME, MAX_START_TIME)
-                    day_structure = random.choice(DateTime.days_list)
-                    date_time = DateTime(start_time, day_structure)
+                    day_structure = random.choice(DateTime.get_day_list(genomes[scores[i][0]][c].credits))
+                    date_time = DateTime(start_time, day_structure, genomes[scores[i][0]][c].credits)
                     genomes[scores[i][0]][c].mutate_date_time(date_time)
     print("mutation complete")
 
@@ -208,13 +208,13 @@ def main():
     for gene in range(GENOMES_SIZE):
         genomes.append([])
         for i in range(len(courses)):
-            course_id = random.choice(courses)
+            course = random.choice(courses)
             room = random.choice(rooms)
             start_time = random.randint(MIN_START_TIME, MAX_START_TIME)
-            day_structure = random.choice(DateTime.days_list)
-            date_time = DateTime(start_time, day_structure)
+            day_structure = random.choice(DateTime.get_day_list(course[1]))
+            date_time = DateTime(start_time, day_structure, course[1])
             professor = random.choice(professors)
-            genomes[gene].append(Course(course_id, room, date_time, professor))
+            genomes[gene].append(Course(course[0], course[1], room, date_time, professor))
     #########################################
 
     signal.signal(signal.SIGINT, signal_handler)

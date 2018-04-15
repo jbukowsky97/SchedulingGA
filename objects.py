@@ -1,11 +1,19 @@
 class DateTime:
-    days_list = ["MWF", "MW", "TR"]
-    duration_mapping = {"MWF": 50, "MW": 70, "TR": 70}
+    days_dict = {1: {"T": 50, "R": 50}, 3: {"MWF": 50, "MW": 75, "TR": 75}}
+    # duration_mapping = {"MWF": 50, "MW": 70, "TR": 70, "T": 50}
 
-    def __init__(self, start_time, days):
+    def __init__(self, start_time, days, credits):
         self.start_time = start_time
         self.days = days
-        self.duration = DateTime.duration_mapping.get(self.days)
+        self.duration = DateTime.days_dict[credits][days]
+
+    @staticmethod
+    def get_day_list(credits):
+        return list(DateTime.days_dict[credits].keys())
+
+    @staticmethod
+    def get_duration(credits, days):
+        return DateTime.days_dict[credits][days]
 
     def __repr__(self):
         return "dt{%d, %s, %d}" % (self.start_time, self.days, self.duration)
@@ -13,14 +21,16 @@ class DateTime:
 
 class Course:
 
-    def __init__(self, course_id, room_num, date_time, professor):
+    def __init__(self, course_id, credits, room_num, date_time, professor):
         self.course_id = course_id
+        self.credits = credits
         self.room_num = room_num
         self.date_time = date_time
         self.professor = professor
 
-    def mutate_course_id(self, course_id):
-        self.course_id = course_id
+    def mutate_course(self, course):
+        self.course_id = course[0]
+        self.credits = course[1]
 
     def mutate_room(self, room_num):
         self.room_num = room_num
@@ -32,7 +42,7 @@ class Course:
         self.professor = professor
 
     def __repr__(self):
-        return "%s, %s, %s %s" % (self.course_id, self.room_num, self.date_time, self.professor)
+        return "%s, %s, %s, %s %s" % (self.course_id, self.credits, self.room_num, self.date_time, self.professor)
 
 
 class Professor:
