@@ -15,12 +15,14 @@ with open("courses.txt") as f:
         entries = line.split(" ")
         courses.append((entries[0], int(entries[1])))
 
-professors = [Professor("Jamal Alsabbagh"), Professor("Hans Dulimarta"), Professor("Mostafa El-Said"),
-              Professor("Jonathan Engelsma"), Professor("Roger Ferguson"), Professor("Larry Kotman"),
-              Professor("Jared Moore"), Professor("Jagadeesh Nandigam"), Professor("Christian Trefttz"),
-              Professor("Greg Wolffe"), Professor("Ira Woodring")]
 
-rooms = ["0", "1", "2", "3", "4", "5"]
+professors = None
+with open("professors.txt") as f:
+    professors = [Professor(name) for name in f.read().splitlines()]
+
+rooms = None
+with open("rooms.txt") as f:
+    rooms = [room for room in f.read().splitlines()]
 
 DAYS_OF_WEEK = "MTWRF"
 
