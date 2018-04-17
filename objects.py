@@ -1,5 +1,5 @@
 class DateTime:
-    days_dict = {1: {"T": 50, "R": 50}, 3: {"MWF": 50, "MW": 75, "TR": 75}}
+    days_dict = {1: {"T": 50, "R": 50}, 3: {"MWF": 50, "MW": 75, "TR": 75}, 4: {"T": 110, "R": 110}}
     # duration_mapping = {"MWF": 50, "MW": 70, "TR": 70, "T": 50}
 
     def __init__(self, start_time, days, credits):

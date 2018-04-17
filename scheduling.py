@@ -33,11 +33,14 @@ MAX_START_TIME = 16
 
 NUM_COURSES = len(courses)
 NUM_ROOMS = len(rooms)
+
+HOUR = 60
+TIME_SLICE = 60
 TIME_SLICES = MAX_START_TIME - MIN_START_TIME + 2
 
-COURSE_INC = 5
-ROOM_INC = 1
-PROFESSOR_INC = 3
+COURSE_INC = 50
+ROOM_INC = 10
+PROFESSOR_INC = 30
 
 TOP_PERCENT = .05
 PERCENT_UN_MUTATED = .01
@@ -57,7 +60,7 @@ def fitness(gene):
         room_count[room] = {}
         for day in DAYS_OF_WEEK:
             room_count[room][day] = []
-            for i in range(MIN_START_TIME, MAX_START_TIME + 2, 1):
+            for i in range(TIME_SLICES):
                 room_count[room][day].append(0)
     # check professor overlap
     professors_schedule = {}
