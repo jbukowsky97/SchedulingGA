@@ -2,6 +2,7 @@ import sys
 import signal
 import pprint
 
+import re
 import copy
 import random
 from objects import *
@@ -23,6 +24,19 @@ with open("professors.txt") as f:
 rooms = None
 with open("rooms.txt") as f:
     rooms = [room for room in f.read().splitlines()]
+
+course_relationships = None
+with open("course_relationships.txt") as f:
+    lines = f.read().splitlines()
+    course_relationships = {}
+    top_courses = re.split(" +", lines[0])[1:]
+    for line in lines[1:]:
+        line = re.split(" +", line)
+        cur_course = line[0]
+        course_relationships[cur_course] = {}
+        relations = line[1:]
+        for i in range(len(relations)):
+            course_relationships[cur_course][top_courses[i]] = int(relations[i])
 
 DAYS_OF_WEEK = "MTWRF"
 
@@ -78,6 +92,16 @@ def fitness(gene):
                     professors_schedule[day][time_slice][course.professor.name] = 1
                 else:
                     professors_schedule[day][time_slice][course.professor.name] += 1
+    class_times = {}
+    for day in DAYS_OF_WEEK:
+        class_times[day] = []
+        for i in range(TIME_SLICES):
+            class_times[day].append([])
+    for course in gene:
+        for time_slice in range(course.date_time.start_time - MIN_START_TIME,
+                                course.date_time.start_time + course.date_time.duration // 60 + 1 - MIN_START_TIME):
+            for day in course.date_time.days:
+                class_times[day][time_slice].append(course.course_id)
     for count in course_count.values():
         if count == 1:
             score += COURSE_INC
@@ -93,6 +117,15 @@ def fitness(gene):
             for count in professors_schedule[day][i].values():
                 if count > 1:
                     score -= (count - 1) * PROFESSOR_INC
+    for day in DAYS_OF_WEEK:
+        for i in range(TIME_SLICES):
+            for k1 in range(len(class_times[day][i])):
+                k1_course = class_times[day][i][k1]
+                k1_course = k1_course[:k1_course.index("-")]
+                for k2 in range(k1 + 1, len(class_times[day][i])):
+                    k2_course = class_times[day][i][k2]
+                    k2_course = k2_course[:k2_course.index("-")]
+                    score -= course_relationships[k1_course][k2_course]
     if score <= 0:
         print("score of %d not allowed, exiting..." % score)
         sys.exit(-1)
